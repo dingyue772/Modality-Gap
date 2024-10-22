@@ -1,0 +1,14 @@
+# Python
+**/__pycache__/
+
+# IDEs and Editors
+.vscode/
+# Data files
+*.csv
+*.tsv
+*.json
+*.xlsx
+# Cache
+*.cache
+*.pkl
+*.pt

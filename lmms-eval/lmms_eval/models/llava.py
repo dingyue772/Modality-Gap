@@ -363,6 +363,18 @@ class Llava(lmms):
                 conv.append_message(conv.roles[1], None)
                 prompt_question = conv.get_prompt()
                 question_input.append(prompt_question)
+            
+            # The above for loop has bugs. When there is no visuals, e.g. pure text,
+            # there will be no for loop execute resulting in an empty question_input (because no visuals)
+            # Scenario 1 won't even be execute
+            if len(batched_visuals) == 0:
+                for context in contexts:
+                    question = context
+                    conv = conv_templates[self.conv_template].copy()
+                    conv.append_message(conv.roles[0], question)
+                    conv.append_message(conv.roles[1], None)
+                    prompt_question = conv.get_prompt()
+                    question_input.append(prompt_question)
 
             # input_ids = tokenizer_image_token(prompt, self.tokenizer, IMAGE_TOKEN_INDEX, return_tensors="pt").unsqueeze(0).to(self.device)
             # preconfigure gen_kwargs with defaults
@@ -388,7 +400,7 @@ class Llava(lmms):
                     attention_mask=attention_masks,
                     pad_token_id=pad_token_ids,
                     images=image_tensor,
-                    image_sizes=gen_kwargs["image_sizes"],
+                    # image_sizes=gen_kwargs["image_sizes"],
                     do_sample=True if gen_kwargs["temperature"] > 0 else False,
                     temperature=gen_kwargs["temperature"],
                     top_p=gen_kwargs["top_p"],

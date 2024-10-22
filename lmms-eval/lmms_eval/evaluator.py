@@ -45,6 +45,24 @@ from lmms_eval.utils import (
     simple_parse_args_string,
 )
 
+def set_model_dtype(lm, target_dtype=torch.float32):
+    """
+    将语言模型的所有参数设置为相同的数据类型。
+
+    :param lm: 语言模型实例
+    :param target_dtype: 目标数据类型，默认为 torch.float32
+    """
+    # 遍历模型的所有参数
+    for param in lm.parameters():
+        # 转换参数的数据类型
+        param.data = param.data.to(target_dtype)
+        
+    # 如果模型中有缓冲区（例如，BatchNorm层），也需要转换它们
+    for buffer in lm.buffers():
+        buffer.data = buffer.data.to(target_dtype)
+
+
+
 
 @positional_deprecated
 def simple_evaluate(
@@ -173,6 +191,8 @@ def simple_evaluate(
             "device": device,
         },
     )
+    # 示例用法
+    # set_model_dtype(lm.model, torch.float32)  # 将模型参数设置为 float32  
 
     if task_manager is None:
         task_manager = TaskManager(verbosity, model_name=model)
@@ -452,7 +472,7 @@ def evaluate(
         if (lm.world_size > 1) and (padding_requests[reqtype] > 0):
             for _ in range(padding_requests[reqtype]):
                 cloned_reqs.extend([req] * req.repeats)
-
+        # import pdb; pdb.set_trace()
         # run requests through model
         resps = getattr(lm, reqtype)(cloned_reqs)  # Choiszt run generate until
 

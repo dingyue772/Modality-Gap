@@ -257,9 +257,22 @@ class LlavaMetaForCausalLM(ABC):
     def get_vision_tower(self):
         return self.get_model().get_vision_tower()
 
-    def encode_images(self, images):
+    def encode_images(self, images): # images.dtype为torch.float16
         if type(images) is not list:
-            image_features = self.get_model().get_vision_tower()(images)
+            image_features = self.get_model().get_vision_tower()(images) # image_features.dtype为torch.float16
+            import pdb; pdb.set_trace()
+            # 检查数据类型
+            # print(f"Image features dtype: {image_features.dtype}")
+            # print(f"Projector weight dtype: {self.get_model().mm_projector.weight.dtype}") # torch.bfloat16
+            # 获取 mm_projector 模块
+            mm_projector = self.get_model().mm_projector
+            # 遍历 mm_projector 中的所有参数并转换为 float16
+            for param in mm_projector.parameters():
+                param.data = param.data.to(image_features.dtype)
+            # 确保两个张量的数据类型一致
+            # if image_features.dtype != self.get_model().mm_projector.weight.dtype:
+            #     image_features = image_features.to(self.get_model().mm_projector.weight.dtype)
+
             image_features = self.get_model().mm_projector(image_features)
         else:
             # mof
