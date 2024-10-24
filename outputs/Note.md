@@ -1,0 +1,2 @@
+本文件夹`/data/yangzhao/dy/Modality-Gap/outputs`中为LVLMs在各个benchmark上评测结果与alignment_score、correpondance_score之间的correlation计算结果。
+其中`_mean`为全部benchmark的score avearage后的结果为y值，全部benchmark上alignment score avearage后的结果为a值，使用linear或polynomial拟合的$R^2$值

@@ -13,21 +13,21 @@ def main():
 
     args = parser.parse_args()
 
-    df = pd.read_csv('/Users/shijiayang/Desktop/Vision_Feature_AC_private/visualizations/ablations_t.csv')
+    df = pd.read_csv('/data/yangzhao/dy/Modality-Gap/policy/ablations_t.csv')
 
     # Define the parameters
     benchmarks = ["mmbench_en", "mme", "mmmu_val", "ok_vqa", "textvqa_val", "vizwiz_vqa_val", "scienceqa_img", "seed_image"]
     train_models = ["CLIP336", "CLIP224", "OpenCLIP", "DINOv2", "SDim", "SD1.5", "SDXL", "DiT", "SD3", "SD2.1", "SigLIP", "CLIP224+DINOv2", "CLIP336+DINOv2"]
 
     # Initialize a dictionary to store the results
-    # results = {'Benchmarks': benchmarks}
-    results = {'Models': train_models}
+    results = {'Benchmarks': benchmarks}
+    # results = {'Models': train_models}
 
     column_names = df.columns.tolist()
 
     # Loop through the combinations and compute the average error rates
-    # results['train_mse'] = []
-    # results['train_r2'] = []
+    results['train_mse'] = []
+    results['train_r2'] = []
 
     for benchmark in benchmarks:
         data_perf_max = df[benchmark].max()
@@ -80,21 +80,21 @@ def main():
         model = LinearRegression()
         model.fit(normalized_train_X, normalized_train_y)
         train_pred = model.predict(normalized_train_X)
-        train_mse = mean_squared_error(normalized_train_y, train_pred)
+        train_mse = np.mean((normalized_train_y - train_pred) ** 2)
         train_r2 = r2_score(normalized_train_y, train_pred)
 
-        # results['train_mse'].append(train_mse)
-        # results['train_r2'].append(train_r2)
-        print(benchmark, train_r2)
-        results[f'{benchmark}_A'] = df["normed_a"].copy()
-        results[f'{benchmark}_C'] = df["normed_c"].copy()
+        results['train_mse'].append(train_mse)
+        results['train_r2'].append(train_r2)
+        # print(benchmark, train_r2)
+        # results[f'{benchmark}_A'] = df["normed_a"].copy()
+        # results[f'{benchmark}_C'] = df["normed_c"].copy()
         
 
     # Convert the results dictionary to a DataFrame
     results_df = pd.DataFrame(results)
 
     # Save the DataFrame to a CSV file
-    results_df.to_csv(f'/Users/shijiayang/Desktop/Vision_Feature_AC_private/visualizations/{args.file_name}.csv', index=False)
+    results_df.to_csv(f'/data/yangzhao/dy/Modality-Gap/outputs/{args.file_name}', index=False)
 
 if __name__ == "__main__":
     main()
