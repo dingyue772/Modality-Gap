@@ -69,6 +69,7 @@ class LlavaLlamaForCausalLM(LlamaForCausalLM, LlavaMetaForCausalLM):
         images: Optional[torch.FloatTensor] = None,
         image_sizes: Optional[List[List[int]]] = None,
         return_dict: Optional[bool] = None,
+        # cache_position=None
     ) -> Union[Tuple, CausalLMOutputWithPast]:
 
         if inputs_embeds is None:
@@ -88,6 +89,10 @@ class LlavaLlamaForCausalLM(LlamaForCausalLM, LlavaMetaForCausalLM):
                 images,
                 image_sizes
             )
+        # import pdb; pdb.set_trace()
+        if inputs_embeds != None: 
+            for param in self.parameters():
+                param.data = param.data.to(inputs_embeds.dtype)
         return super().forward(
             input_ids=input_ids,
             attention_mask=attention_mask,

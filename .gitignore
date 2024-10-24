@@ -1,5 +1,6 @@
 # Python
 **/__pycache__/
+*.pyc
 
 # IDEs and Editors
 .vscode/
@@ -12,3 +13,6 @@
 *.cache
 *.pkl
 *.pt
+git.sh
+logs/
+It

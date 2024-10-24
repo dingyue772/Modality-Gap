@@ -7,13 +7,6 @@
 </div>
 
 
-
-
-## Updates
-- [TODO] Hard working on cleaning the code...but the messy version is here. Please stay tuned and star our repo! 😝
-- [2024/09/01] We released the checkpoints of MLLMs on 13 vision representations.
-- [2024/08/29] We introduce the Law of Vision Representation in MLLMs and AC Policy.
-
 ## Contents
 - [Clone This Repository](#clone-this-repository)
 - [Train LLaVA with Custom Vision Representation](#train-llava-with-custom-vision-representation)
@@ -25,10 +18,27 @@
 - [Citation](#citation)
 - [Acknowledgement](#acknowledgement)
 
-## Clone This Repository
+## Conda Environment Setup
+clone the repo
 ```bash
-git clone https://github.com/bronyayang/Law_of_Vision_Representation_in_MLLMs.git
-cd Law_of_Vision_Representation_in_MLLMs
+git clone https://github.com/dingyue772/Modality-Gap.git
+cd Modality-Gap
+```
+pip install 
+```bash
+# llava installation
+conda create -n ac_llava python=3.10 -y
+conda activate ac_llava
+pip install --upgrade pip
+bash run.sh
+
+# diffusers installation
+cd diffusers
+pip install -e.
+
+# lmms-eval installation
+cd lmms-eval
+pip install --no-deps -U -e.
 ```
 
 ## Train LLaVA with Custom Vision Representation

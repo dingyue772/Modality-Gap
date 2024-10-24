@@ -260,7 +260,7 @@ class LlavaMetaForCausalLM(ABC):
     def encode_images(self, images): # images.dtype为torch.float16
         if type(images) is not list:
             image_features = self.get_model().get_vision_tower()(images) # image_features.dtype为torch.float16
-            import pdb; pdb.set_trace()
+            # import pdb; pdb.set_trace()
             # 检查数据类型
             # print(f"Image features dtype: {image_features.dtype}")
             # print(f"Projector weight dtype: {self.get_model().mm_projector.weight.dtype}") # torch.bfloat16
@@ -307,14 +307,15 @@ class LlavaMetaForCausalLM(ABC):
         self, input_ids, position_ids, attention_mask, past_key_values, labels,
         images, image_sizes=None
     ):
-        vision_tower = self.get_vision_tower()
+        import pdb; pdb.set_trace()
+        vision_tower = self.get_vision_tower() # CLIPVisionTower -> 315
         if vision_tower is None or images is None or input_ids.shape[1] == 1:
             return input_ids, position_ids, attention_mask, past_key_values, None, labels
 
-        if type(vision_tower) is str:
+        if type(vision_tower) is str: # -> 318
                 image_features = self.encode_features(images)
         else:
-            if (type(images) is list or images.ndim == 5) and type(vision_tower) is not nn.ModuleList:
+            if (type(images) is list or images.ndim == 5) and type(vision_tower) is not nn.ModuleList: # -> 367
                 if type(images) is list:
                     images = [x.unsqueeze(0) if x.ndim == 3 else x for x in images]
                 images = torch.cat([image for image in images], dim=0)
@@ -363,7 +364,7 @@ class LlavaMetaForCausalLM(ABC):
                 else:
                     raise ValueError(f"Unexpected mm_patch_merge_type: {self.config.mm_patch_merge_type}")
             else:
-                image_features = self.encode_images(images)
+                image_features = self.encode_images(images) # [1, 576, 4096] -> 370
 
         # TODO: image start / end is not implemented here to support pretraining.
         if getattr(self.config, 'tune_mm_mlp_adapter', False) and getattr(self.config, 'mm_use_im_start_end', False):
@@ -378,12 +379,12 @@ class LlavaMetaForCausalLM(ABC):
         _attention_mask = attention_mask
         if attention_mask is None:
             attention_mask = torch.ones_like(input_ids, dtype=torch.bool)
-        else:
+        else: # yes
             attention_mask = attention_mask.bool()
         if position_ids is None:
-            position_ids = torch.arange(0, input_ids.shape[1], dtype=torch.long, device=input_ids.device)
+            position_ids = torch.arange(0, input_ids.shape[1], dtype=torch.long, device=input_ids.device) # yes
         if labels is None:
-            labels = torch.full_like(input_ids, IGNORE_INDEX)
+            labels = torch.full_like(input_ids, IGNORE_INDEX) # yes
 
         # remove the padding using attention_mask -- FIXME
         _input_ids = input_ids
@@ -394,7 +395,7 @@ class LlavaMetaForCausalLM(ABC):
         new_labels = []
         cur_image_idx = 0
         for batch_idx, cur_input_ids in enumerate(input_ids):
-            num_images = (cur_input_ids == IMAGE_TOKEN_INDEX).sum()
+            num_images = (cur_input_ids == IMAGE_TOKEN_INDEX).sum() # -> 408
             if num_images == 0:
                 cur_image_features = image_features[cur_image_idx]
                 cur_input_embeds_1 = self.get_model().embed_tokens(cur_input_ids)
@@ -404,15 +405,15 @@ class LlavaMetaForCausalLM(ABC):
                 cur_image_idx += 1
                 continue
 
-            image_token_indices = [-1] + torch.where(cur_input_ids == IMAGE_TOKEN_INDEX)[0].tolist() + [cur_input_ids.shape[0]]
+            image_token_indices = [-1] + torch.where(cur_input_ids == IMAGE_TOKEN_INDEX)[0].tolist() + [cur_input_ids.shape[0]] # [-1, 35, 88], 分别代表input_ids开始,image_token位置, input_ids结束
             cur_input_ids_noim = []
             cur_labels = labels[batch_idx]
             cur_labels_noim = []
             for i in range(len(image_token_indices) - 1):
                 cur_input_ids_noim.append(cur_input_ids[image_token_indices[i]+1:image_token_indices[i+1]])
                 cur_labels_noim.append(cur_labels[image_token_indices[i]+1:image_token_indices[i+1]])
-            split_sizes = [x.shape[0] for x in cur_labels_noim]
-            cur_input_embeds = self.get_model().embed_tokens(torch.cat(cur_input_ids_noim))
+            split_sizes = [x.shape[0] for x in cur_labels_noim] # [35, 52]
+            cur_input_embeds = self.get_model().embed_tokens(torch.cat(cur_input_ids_noim)) # Embedding(32000, 4096, padding_idx=0)
             cur_input_embeds_no_im = torch.split(cur_input_embeds, split_sizes, dim=0)
             cur_new_input_embeds = []
             cur_new_labels = []
@@ -421,9 +422,9 @@ class LlavaMetaForCausalLM(ABC):
                 cur_new_input_embeds.append(cur_input_embeds_no_im[i])
                 cur_new_labels.append(cur_labels_noim[i])
                 if i < num_images:
-                    cur_image_features = image_features[cur_image_idx]
+                    cur_image_features = image_features[cur_image_idx] # [576, 4096]
                     cur_image_idx += 1
-                    cur_new_input_embeds.append(cur_image_features)
+                    cur_new_input_embeds.append(cur_image_features) # add image features after text features
                     cur_new_labels.append(torch.full((cur_image_features.shape[0],), IGNORE_INDEX, device=cur_labels.device, dtype=cur_labels.dtype))
 
             cur_new_input_embeds = [x.to(self.device) for x in cur_new_input_embeds]
@@ -436,7 +437,7 @@ class LlavaMetaForCausalLM(ABC):
 
         # Truncate sequences to max length as image embeddings can make the sequence longer
         tokenizer_model_max_length = getattr(self.config, 'tokenizer_model_max_length', None)
-        if tokenizer_model_max_length is not None:
+        if tokenizer_model_max_length is not None: # -> 445
             new_input_embeds = [x[:tokenizer_model_max_length] for x in new_input_embeds]
             new_labels = [x[:tokenizer_model_max_length] for x in new_labels]
 
@@ -449,9 +450,9 @@ class LlavaMetaForCausalLM(ABC):
         attention_mask = torch.zeros((batch_size, max_len), dtype=attention_mask.dtype, device=attention_mask.device)
         position_ids = torch.zeros((batch_size, max_len), dtype=position_ids.dtype, device=position_ids.device)
 
-        for i, (cur_new_embed, cur_new_labels) in enumerate(zip(new_input_embeds, new_labels)):
-            cur_len = cur_new_embed.shape[0]
-            if getattr(self.config, 'tokenizer_padding_side', 'right') == "left":
+        for i, (cur_new_embed, cur_new_labels) in enumerate(zip(new_input_embeds, new_labels)): # loop 1 time
+            cur_len = cur_new_embed.shape[0] # 663
+            if getattr(self.config, 'tokenizer_padding_side', 'right') == "left": # ->465
                 new_input_embeds_padded.append(torch.cat((
                     torch.zeros((max_len - cur_len, cur_new_embed.shape[1]), dtype=cur_new_embed.dtype, device=cur_new_embed.device),
                     cur_new_embed
@@ -470,23 +471,23 @@ class LlavaMetaForCausalLM(ABC):
                     attention_mask[i, :cur_len] = True
                     position_ids[i, :cur_len] = torch.arange(0, cur_len, dtype=position_ids.dtype, device=position_ids.device)
 
-        new_input_embeds = torch.stack(new_input_embeds_padded, dim=0)
+        new_input_embeds = torch.stack(new_input_embeds_padded, dim=0) # [1, 663, 4096]
 
         if _labels is None:
-            new_labels = None
+            new_labels = None # yes
         else:
             new_labels = new_labels_padded
 
         if _attention_mask is None:
             attention_mask = None
         else:
-            attention_mask = attention_mask.to(dtype=_attention_mask.dtype)
+            attention_mask = attention_mask.to(dtype=_attention_mask.dtype) # yes
 
         if _position_ids is None:
             position_ids = None
 
-        # print(cur_image_features.shape)
-        # save_tensor_to_folder(cur_image_features.cpu(), '/any/path/temp_tensors')
+        print(cur_image_features.shape)
+        # save_tensor_to_folder(cur_image_features.cpu(), '/data/yangzhao/dy/Modality-Gap/visual_features/mme/clip336')
 
         return None, position_ids, attention_mask, past_key_values, new_input_embeds, new_labels
 

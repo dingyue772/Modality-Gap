@@ -4,5 +4,7 @@ build
 diffusers
 llava
 lmms-eval
+logs
 policy
+visual_features
 visualizations

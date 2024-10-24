@@ -2,7 +2,6 @@ import torch
 
 torch.backends.cuda.matmul.allow_tf32 = True
 
-
 import copy
 import warnings
 from datetime import timedelta
@@ -41,6 +40,21 @@ if version.parse(torch.__version__) >= version.parse("2.1.2"):
     best_fit_attn_implementation = "sdpa"
 else:
     best_fit_attn_implementation = "eager"
+
+import numpy as np
+import random
+
+def set_seed(seed):
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)  # if you are using multi-GPU.
+    np.random.seed(seed)
+    random.seed(seed)
+    torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.deterministic = True
+
+# Set the seed
+set_seed(42)
 
 
 @register_model("llava")
@@ -95,15 +109,16 @@ class Llava(lmms):
         try:
             # Try to load the model with the multimodal argument
             self._tokenizer, self._model, self._image_processor, self._max_length = load_pretrained_model(pretrained, None, model_name, device_map=self.device_map, **llava_model_args)
+            self._tokenizer, self._model, self._image_processor, self._max_length = load_pretrained_model(model_path=pretrained, model_base="/data/yangzhao/LLM_models/dy/lmsys/vicuna-7b-v1.5", model_name=model_name, device_map=self.device_map, **llava_model_args)
         except TypeError:
             # for older versions of LLaVA that don't have multimodal argument
             llava_model_args.pop("multimodal", None)
             self._tokenizer, self._model, self._image_processor, self._max_length = load_pretrained_model(pretrained, None, model_name, device_map=self.device_map, **llava_model_args)
+            self._tokenizer, self._model, self._image_processor, self._max_length = load_pretrained_model(model_path=pretrained, model_base="/data/yangzhao/LLM_models/dy/lmsys/vicuna-7b-v1.5", model_name=model_name, device_map=self.device_map, **llava_model_args)
         self._config = self._model.config
         self.model.eval()
         if tie_weights:
             self.model.tie_weights()
-
         self.truncation = truncation
         self.batch_size_per_gpu = int(batch_size)
         self.conv_template = conv_template
